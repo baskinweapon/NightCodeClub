@@ -1,27 +1,28 @@
-﻿using Telegram.Bot;
+﻿using System.Diagnostics;
+using NightCodeClub;
+using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
+using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 
-long chatId = 0;
+#region DataBase
+
+var data = new Data();
+data.Load();
+
+#endregion
+
+#region Telegram API
 
 var botClient = new TelegramBotClient("6275824665:AAEbfSRd_OZbb18aKr01xHjq0HYNlo6ucHk");
-
 using CancellationTokenSource cts = new ();
 
 // StartReceiving does not block the caller thread. Receiving is done on the ThreadPool.
 ReceiverOptions receiverOptions = new () {
     AllowedUpdates = Array.Empty<UpdateType>() // receive all update types
 };
-
-InlineKeyboardMarkup inlineKeyboard = new(
-    new []
-    {
-        InlineKeyboardButton.WithCallbackData(text: "Find Team", callbackData: "/find_team"),
-        InlineKeyboardButton.WithCallbackData(text: "Own Team", callbackData: "12") 
-    });
 
 botClient.StartReceiving(
     updateHandler: HandleUpdateAsync,
@@ -38,8 +39,14 @@ Console.ReadLine();
 // Send cancellation request to stop bot
 cts.Cancel();
 
-async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-{
+#endregion
+
+
+//Main handle from Telegram bot
+async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken) {
+    Debug.Assert(update.Message != null, "update.Message != null");
+    var chatId = update.Message.Chat.Id;
+    
     switch (update.Type) {
         case UpdateType.CallbackQuery:
             var callbackQuery = update.CallbackQuery;
@@ -49,12 +56,6 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
                 text: $"Received {callbackQuery.Data}",
                 cancellationToken: cancellationToken
             );
-            await botClient.SendTextMessageAsync(
-                chatId: chatId,
-                text: callbackQuery.Data,
-                replyMarkup: inlineKeyboard,
-                cancellationToken: cancellationToken);
-
             break;
         case UpdateType.Message:
             break;
@@ -62,39 +63,47 @@ async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, Cancel
    
     if (update.Message is not { Text: { } messageText } message)
         return;
-    chatId = message.Chat.Id;
     
     Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
-    
-    if (messageText == "/start") {
-        await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Hello, World!",
-            replyMarkup: inlineKeyboard,
-            cancellationToken: cancellationToken);
-    } if (messageText == "/run") {
-        await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "Run command",
-            cancellationToken: cancellationToken);
-    } if (messageText == "/room") {
-        await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "room command",
-            cancellationToken: cancellationToken);
-    } if (messageText == "/approve") {
-        await botClient.SendTextMessageAsync(
-            chatId: chatId,
-            text: "approve command",
-            replyMarkup: inlineKeyboard,
-            cancellationToken: cancellationToken);
+    if (messageText.StartsWith("/")) GetCommand(messageText, update, cancellationToken);
+}
+
+async void GetCommand(string messageText, Update update, CancellationToken cancellationToken) {
+    switch (messageText) {
+        case "/start":
+            //Add new user to database
+            if (update.Message != null) {
+                data.AddNewUser(update);
+            }
+
+            await botClient.SendTextMessageAsync(
+                chatId: update.Message.Chat.Id,
+                text: "Hi, you can use this bot to find a challenge for you team.",
+                replyMarkup: Keyboard.findInlineKeyboardMarkup,
+                cancellationToken: cancellationToken);
+            break;
+        case "/run":
+            await botClient.SendTextMessageAsync(
+                chatId: update.Message.Chat.Id,
+                text: "Run command",
+                cancellationToken: cancellationToken);
+            break;
+        case "/room":
+            Commands.RoomCommand(botClient, update.Message.Chat.Id, cancellationToken);
+            break;
+        case "/approve":
+            Debug.Assert(update.Message != null, "update.Message != null");
+            await botClient.SendTextMessageAsync(
+                chatId: update.Message.Chat.Id,
+                text: "approve command",
+                cancellationToken: cancellationToken);
+            break;
     }
 }
 
-Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
-{
-    var ErrorMessage = exception switch
-    {
+
+Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken) {
+    var ErrorMessage = exception switch {
         ApiRequestException apiRequestException
             => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
         _ => exception.ToString()
