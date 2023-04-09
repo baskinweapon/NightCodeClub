@@ -1,6 +1,4 @@
-using NightCodeClub;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 using static NightCodeClub.Keyboard;
 
 public static class Commands {

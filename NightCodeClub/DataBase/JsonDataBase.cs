@@ -1,33 +1,24 @@
+using System.Text.Json;
 using Telegram.Bot.Types;
 using File = System.IO.File;
+namespace NightCodeClub.DataBase; 
 
-namespace NightCodeClub;
-using System.Text.Json;
-
-public class User {
-    public long chatID { get; set; }
-    public string? UserName { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-}
-
-public class Data {
-    
+public class JsonDataBase: IDataBase {
     private readonly string fileName = Directory.GetParent(Environment.CurrentDirectory)?.Parent?.Parent + "/data.json";
     
-    public List<User>? GetAllUsers() {
-        return users;
-    }
+    public List<User>? GetAllUsers() => users;
     
     private List<User> users;
     public void AddNewUser(Update update) {
         if (update.Message != null) {
+            
             var user = new User {
                 chatID = update.Message.Chat.Id,
                 UserName = update.Message.Chat.Username,
                 FirstName = update.Message.Chat.FirstName,
                 LastName = update.Message.Chat.LastName
             };
+            
             if (users.Any(s => s.chatID == user.chatID)) {
                 Console.WriteLine($"User {user.UserName} already exists");
                 return;
@@ -39,9 +30,7 @@ public class Data {
     }
     
     public void RemoveUser(User user) {
-        if (users.Any(s => s.chatID == user.chatID)) {
-            users.Remove(user);
-        }
+        if (users.Any(s => s.chatID == user.chatID)) users.Remove(user);
     }
     
     public void Load() {

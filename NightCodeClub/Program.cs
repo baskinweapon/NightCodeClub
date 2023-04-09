@@ -1,16 +1,17 @@
 ﻿using System.Diagnostics;
 using NightCodeClub;
+using NightCodeClub.DataBase;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 #region DataBase
 
-var data = new Data();
-data.Load();
+var data = new JsonDataBase(); // concrete implementation
+var dataBase = new DataBridge(data); // bridge
+dataBase.Load();
 
 #endregion
 
@@ -41,30 +42,22 @@ cts.Cancel();
 
 #endregion
 
+async void HandleCallbackQuery(Update update, CancellationToken cancellationToken) {
+    var callbackQuery = update.CallbackQuery;
+    
+    await botClient.AnswerCallbackQueryAsync(
+        callbackQueryId: callbackQuery.Id,
+        text: $"Received {callbackQuery.Data}",
+        cancellationToken: cancellationToken
+    );
+}
 
 //Main handle from Telegram bot
 async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken) {
     Debug.Assert(update.Message != null, "update.Message != null");
-    var chatId = update.Message.Chat.Id;
     
-    switch (update.Type) {
-        case UpdateType.CallbackQuery:
-            var callbackQuery = update.CallbackQuery;
-            Console.WriteLine($"Received a callback query from {callbackQuery.From.Id}.");
-            await botClient.AnswerCallbackQueryAsync(
-                callbackQueryId: callbackQuery.Id,
-                text: $"Received {callbackQuery.Data}",
-                cancellationToken: cancellationToken
-            );
-            break;
-        case UpdateType.Message:
-            break;
-    }
-   
-    if (update.Message is not { Text: { } messageText } message)
-        return;
-    
-    Console.WriteLine($"Received a '{messageText}' message in chat {chatId}.");
+    if (update.Type == UpdateType.CallbackQuery) HandleCallbackQuery(update, cancellationToken);
+    if (update.Message is not { Text: { } messageText}) return;
     if (messageText.StartsWith("/")) GetCommand(messageText, update, cancellationToken);
 }
 
@@ -73,9 +66,8 @@ async void GetCommand(string messageText, Update update, CancellationToken cance
         case "/start":
             //Add new user to database
             if (update.Message != null) {
-                data.AddNewUser(update);
+                dataBase.AddNewUser(update);
             }
-
             await botClient.SendTextMessageAsync(
                 chatId: update.Message.Chat.Id,
                 text: "Hi, you can use this bot to find a challenge for you team.",
