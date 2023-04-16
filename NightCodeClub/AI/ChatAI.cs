@@ -6,9 +6,9 @@ using OpenAI.GPT3.ObjectModels.RequestModels;
 using OpenAI.GPT3.ObjectModels;
 
 public static class ChatAI {
-    private static string apiKey = "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";
-    public static Action<string> OnGenerateTask;
-    public static async void Request(string prompt) {
+    private static string apiKey = "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";
+    
+    public static async Task<string> Request(string prompt) {
         var gpt3 = new OpenAIService(new OpenAiOptions() {
             ApiKey = apiKey
         });
@@ -23,8 +23,11 @@ public static class ChatAI {
         
         if (completionResult.Successful) {
             foreach (var choice in completionResult.Choices) {
+                Console.BackgroundColor = ConsoleColor.DarkGray;
+                Console.ForegroundColor = ConsoleColor.Blue;
                 Console.WriteLine(choice.Text);
-                return;
+                Console.ResetColor();
+                return choice.Text;
             }                
         } else {
             if (completionResult.Error == null) {
@@ -32,5 +35,7 @@ public static class ChatAI {
             }
             Console.WriteLine($"{completionResult.Error.Code}: {completionResult.Error.Message}");
         }
+
+        return null;
     }
 }

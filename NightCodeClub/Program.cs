@@ -40,11 +40,11 @@ botClient.StartReceiving(
 );
 
 var me = await botClient.GetMeAsync();
+roomManger.OnNewTeemCreated += SendTeamCreatedMessage;
 
 Console.WriteLine($"Start listening for @{me.Username}");
 Console.ReadLine();
 
-roomManger.OnNewTeemCreated += SendTeamCreatedMessage;
 // Send cancellation request to stop bot
 cts.Cancel();
 
@@ -133,16 +133,18 @@ async void GetCommand(string messageText, Update update, CancellationToken cance
     }
 }
 
-async void SendTeamCreatedMessage(string request) {
-    Console.WriteLine("Send task message with: " + request);
-    var room = roomManger.GetRoom(request);
+async void SendTeamCreatedMessage(string request, RoomData room) {
+    Console.WriteLine("Send task message");
+    Console.BackgroundColor = ConsoleColor.Magenta;
+    Console.WriteLine("Room is not null");
+    Console.ResetColor();
     var ids = room.ChatIds;
     foreach (var id in ids) {
         await botClient.SendTextMessageAsync(
             chatId: id,
             text: request
         );
-    }  
+    }
 }
 
 

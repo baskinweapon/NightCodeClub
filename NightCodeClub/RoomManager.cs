@@ -17,11 +17,8 @@ public class RoomData {
         if (ChatIds.Contains(chatId)) return;
         if (membersCount > 2) return;
         membersCount++;
-        if (membersCount == 1) {
-            Console.WriteLine("invoke action");
-            OnFullRoom.Invoke(this);
-        }
-        userNames.Add(userName);
+        if (membersCount == 1) OnFullRoom.Invoke(this);
+            userNames.Add(userName);
         ChatIds.Add(chatId);
     }
     
@@ -41,8 +38,6 @@ public class RoomManager {
     private AppData appData;
     private IDataBase dataBase;
     
-    public Action<string> OnNewTeemCreated;
-
     public RoomManager(IDataBase dataBase) {
         this.dataBase = dataBase;
         appData = dataBase.GetAppData();
@@ -56,16 +51,22 @@ public class RoomManager {
         }
     }
 
-    private void CreateTeam(RoomData roomData) {
+    public Action<string, RoomData> OnNewTeemCreated { get; set; }
+
+    private async void CreateTeam(RoomData roomData) {
         Console.WriteLine($"Team {roomData.name} created. \nMembers");
         
         // include AI and create Task
-        ChatAI.Request(
+        var taskRequest = ChatAI.Request(
             $"Create a task for team {roomData.name} with members super weapon," +
             $"task need to be done in 24 hours." +
             $"task need to be C# code and Unity." +
             $"for task needed have hard skills." +
             $"task need to be helphull for social.");
+        
+        var task = await taskRequest;
+        Console.WriteLine(task);
+        OnNewTeemCreated?.Invoke(task, roomData);
     }
     
     public void GenerateNewRoom() {
@@ -82,7 +83,6 @@ public class RoomManager {
                 return room;
             }
         }
-
         return null;
     }
     
