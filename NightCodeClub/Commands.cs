@@ -1,3 +1,5 @@
+using NightCodeClub;
+using NightCodeClub.DataBase;
 using Telegram.Bot;
 using static NightCodeClub.Keyboard;
 
@@ -21,12 +23,12 @@ public static class Commands {
         };
     }
 
-    public static async void RoomCommand(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken) {
+    public static async void RoomCommand(ITelegramBotClient botClient, long chatId, CancellationToken cancellationToken, IDataBase dataBase) {
         await botClient.SendTextMessageAsync(
             chatId: chatId,
-            text: "Waiting another player...",
-            replyMarkup: RoomKeyboardMarkup(),
-            cancellationToken: cancellationToken);
-        
+            text: "Choose your team",
+            replyMarkup: RoomKeyboardMarkup(dataBase.GetAppData().rooms.ToArray()),
+            cancellationToken: cancellationToken
+        );
     } 
 }

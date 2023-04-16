@@ -6,9 +6,9 @@ namespace NightCodeClub.DataBase;
 public class JsonDataBase: IDataBase {
     private readonly string fileName = Directory.GetParent(Environment.CurrentDirectory)?.Parent?.Parent + "/data.json";
     
-    public List<User>? GetAllUsers() => users;
-    
-    private List<User> users;
+    public List<User>? GetAllUsers() => appData.users;
+
+    private AppData appData;
     public void AddNewUser(Update update) {
         if (update.Message != null) {
             
@@ -19,18 +19,27 @@ public class JsonDataBase: IDataBase {
                 LastName = update.Message.Chat.LastName
             };
             
-            if (users.Any(s => s.chatID == user.chatID)) {
+            if (appData.users.Any(s => s.chatID == user.chatID)) {
                 Console.WriteLine($"User {user.UserName} already exists");
                 return;
             }
-            users.Add(user);
+            appData.users.Add(user);
+            Console.WriteLine("User added " + appData.users[0].UserName);
         }
-
+        
         Save();
     }
-    
+
+    public List<RoomData> GetRooms() {
+        return appData.rooms;
+    }
+
+    public AppData GetAppData() {
+        return appData;
+    }
+
     public void RemoveUser(User user) {
-        if (users.Any(s => s.chatID == user.chatID)) users.Remove(user);
+        if (appData.users.Any(s => s.chatID == user.chatID)) appData.users.Remove(user);
     }
     
     public void Load() {
@@ -39,22 +48,19 @@ public class JsonDataBase: IDataBase {
         };
         var json = File.ReadAllText(fileName);
         if (json == "") {
-            users = new List<User>();
+            appData = new AppData();
             return;
         }
-        users = JsonSerializer.Deserialize<List<User>>(json) ?? throw new InvalidOperationException();
-        foreach (var user in users) {
-            Console.WriteLine(user.chatID);
-            Console.WriteLine(user.UserName);
-            Console.WriteLine(user.FirstName);
-            Console.WriteLine(user.LastName);
-        }
+        appData = JsonSerializer.Deserialize<AppData>(json) ?? throw new InvalidOperationException();
     }
 
     public void Save() {
-        var text = JsonSerializer.Serialize<List<User>>(users);
-        Console.WriteLine("text = " + text);
+        var text = JsonSerializer.Serialize<AppData>(appData);
         File.WriteAllText(fileName, text);
+        
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Save data" + text);
+        Console.ForegroundColor = ConsoleColor.White;
     }
     
 }

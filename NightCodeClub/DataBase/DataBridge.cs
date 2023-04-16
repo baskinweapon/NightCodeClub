@@ -9,4 +9,6 @@ public class DataBridge : IDataBase {
     public void Load() => _dataBase.Load();
     public void Save() => _dataBase.Save();
     public void AddNewUser(Update update) => _dataBase.AddNewUser(update);
+    public List<RoomData> GetRooms() => _dataBase.GetRooms();
+    public AppData GetAppData() => _dataBase.GetAppData();
 }
