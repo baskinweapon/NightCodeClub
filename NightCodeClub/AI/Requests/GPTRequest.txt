@@ -1,0 +1,13 @@
+Generate a project for team.
+task need to be done in 24 hours.
+task need to be C# code and Unity. 
+for task needed have hard skills. 
+task need to be helphull for social, or be interesting for gamers.
+create name to this project and discription.
+add step to realization this project.
+add advice and helpfull information.
+add emojis markdown in all your text.
+add this rules: you need create repository in github, and send me link.
+dont use special symbols in your text. only emojis
+dont use Virtual Reality in your project.
+try generate complex and interesting project.

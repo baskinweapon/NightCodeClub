@@ -1,92 +1,78 @@
-using System.Collections;
-using System.Diagnostics;
 using NightCodeClub.AI;
 using NightCodeClub.DataBase;
+using NightCodeClub.Helpers;
+using Telegram.Bot;
+using Telegram.Bot.Types;
+using User = NightCodeClub.DataBase.User;
 
 namespace NightCodeClub; 
 
+
+
 public class RoomData {
-    public Action<RoomData> OnFullRoom;
-    
     public string name {get; set; }
     public int membersCount {get; set; }
-    public List<string> userNames {get; set; }
-    public List<long> ChatIds { get; set; }
-    
-    public void AddMember(string userName, long chatId) {
-        if (ChatIds.Contains(chatId)) return;
-        if (membersCount > 2) return;
+    public List<User> users { get; set; }
+    public string projectDescription { get; set; }
+
+    public void AddMember(Chat chat) {
+        if (DataBridge.GetInstance().GetAppData().GetUsers().Any(user => user.chatID == chat.Id)) 
+            return;
         membersCount++;
-        if (membersCount == 1) OnFullRoom.Invoke(this);
-            userNames.Add(userName);
-        ChatIds.Add(chatId);
+        foreach (var user in DataBridge.GetInstance().GetAppData().GetUsers().Where(user => user.chatID == chat.Id)) {
+            users.Add(user);
+        }
     }
     
-    public RoomData(string name, List<string> userNames, List<long> chatIds, int membersCount = 0) {
+    public RoomData(string name, List<User> users, string projectDescription, int membersCount = 0) {
         this.name = name;
         this.membersCount = membersCount;
-        this.userNames = userNames;
-        ChatIds = chatIds;
+        this.users = users;
+        this.projectDescription = projectDescription;
     }
 
-    public List<string> GetMembers() {
-        return userNames;
+    public List<User> GetMembers() {
+        return users;
     }
 }
 
 public class RoomManager {
-    private AppData appData;
-    private IDataBase dataBase;
+    private static RoomManager instance = new();
     
-    public RoomManager(IDataBase dataBase) {
-        this.dataBase = dataBase;
-        appData = dataBase.GetAppData();
-        if (appData.rooms.Count == 0) {
-            appData.rooms = new List<RoomData>();
-            GenerateNewRoom();
-        }
-        
-        foreach (var room in appData.rooms) {
-            room.OnFullRoom += CreateTeam;
-        }
+    public static RoomManager GetInstance() {
+        return instance;
     }
-
-    public Action<string, RoomData> OnNewTeemCreated { get; set; }
-
+    
     private async void CreateTeam(RoomData roomData) {
-        Console.WriteLine($"Team {roomData.name} created. \nMembers");
+        Log.W($"Team {roomData.name} created. \nMembers", ConsoleColor.Green);
         
-        // include AI and create Task
-        var taskRequest = ChatAI.Request(
-            $"Create a task for team {roomData.name} with members super weapon," +
-            $"task need to be done in 24 hours." +
-            $"task need to be C# code and Unity." +
-            $"for task needed have hard skills." +
-            $"task need to be helphull for social.");
-        
+        var taskRequest = ChatAI.GetInstance().GenerateProject();
         var task = await taskRequest;
-        Console.WriteLine(task);
-        OnNewTeemCreated?.Invoke(task, roomData);
+        Log.W(task, ConsoleColor.DarkGreen);
+        
+        ProjectCreatedMessage(task, roomData);
     }
     
-    public void GenerateNewRoom() {
-        string generatedRoomName = "Room " + appData.rooms.Count;
-        var roomData = new RoomData(generatedRoomName, new List<string>(), new List<long>());
-        appData.rooms.Add(roomData);
-        Console.WriteLine(appData.rooms[0].name);
-        dataBase.Save();
+    async void ProjectCreatedMessage(string request, RoomData room) {
+        var ids = room.GetMembers().Select(user => user.chatID).ToArray();
+        foreach (var id in ids) {
+            await TelegramAPI.GetInstance().GetBotClient().SendTextMessageAsync(
+                chatId: id,
+                text: request
+            );
+        }
+    }
+
+    public async void GenerateNewRoom() {
+        Log.W("Generating room ...", ConsoleColor.Magenta);
+        var appData = DataBridge.GetInstance().GetAppData();
+        var generatedRoomName = await ChatAI.GetInstance().GenerateNewRoomName();
+        var request = await ChatAI.GetInstance().GenerateProject();
+        var roomData = new RoomData(generatedRoomName, new List<User>(), request);
+        appData.AddRoom(roomData);
     }
     
     public RoomData? GetRoom(string roomName) {
-        foreach (var room in appData.rooms) {
-            if (room.name == roomName) {
-                return room;
-            }
-        }
-        return null;
-    }
-    
-    public void FindRoom(string userName) {
-        
+        return DataBridge.GetInstance().GetAppData().GetRooms().FirstOrDefault(room => room.name == roomName);
     }
 }
